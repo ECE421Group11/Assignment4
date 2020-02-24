@@ -2,57 +2,31 @@ use std::cell::RefCell;
 use std::cell::Ref;
 use std::mem;
 
-#[derive(Debug, Copy, Clone)]
-pub enum Val<T>{
-    V(T),
-    Empty
-}
-
 #[derive(Debug, Clone)]
-pub enum Node<T>{
-    HeadNode{
-        up: Box<RefCell<Node<T>>>,
-        right: Box<RefCell<Node<T>>>,
-    },
-    ValueNode{
-        val: Val<T>,
-        up: Box<RefCell<Node<T>>>,
-        right: Box<RefCell<Node<T>>>,
-        left: Box<RefCell<Node<T>>>,
-        down: Box<RefCell<Node<T>>>,
-    },
+pub enum SkipList<T>{
+    //add your code here
+    HeadNode(Box<SkipList<T>>, Box<SkipList<T>>), // up, right
+    ValueNode(T, Box<SkipList<T>>, Box<SkipList<T>>, Box<SkipList<T>>, Box<SkipList<T>>), // value, up, right, down, left
     TailNode
 }
 
-#[derive(Debug, Clone)]
-pub struct SkipList<T>{
-    //add your code here
-    pub headNode: RefCell<Node<T>>,
-    pub layers: RefCell<i32>,
-    pub size: RefCell<usize>
-}
+use SkipList::*;
 
 impl<T> SkipList<T>{
     pub fn new() -> Self{
         // creates a new skip list.
         //add your code here
-        let headNode:Node<T> = Node::HeadNode{ 
-            up: Box::new(RefCell::new(Node::TailNode)), 
-            right: Box::new(RefCell::new(Node::TailNode)),
-        }; 
-
-        return SkipList {
-            headNode: RefCell::new(headNode),
-            layers: RefCell::new(1),
-            size: RefCell::new(0),
-        }
+        return HeadNode(Box::new(TailNode), Box::new(TailNode))
     }
     
     fn len(&self) -> usize{
         // returns the number of elements at level 0 of the skip list.
         //add your code here
-        
-        return *self.size.borrow();
+        match self{
+            HeadNode(up, right) => right.len(),
+            ValueNode(val, up, right, down, left) => 1 + right.len(),
+            TailNode => 0
+        }
     }
     
     fn is_empty(&self) -> bool{
@@ -69,11 +43,11 @@ impl<T> SkipList<T>{
         // add an element with value T to the front of the skiplist.
         //add your code here
 
-        let s:usize = *self.size.borrow();
+        // let s:usize = *self.size.borrow();
     
-        let nodeRef: Ref<'_, Node<T>> = self.headNode.borrow(); 
-        let node: Node<T> = *nodeRef;
-        
+        // let nodeRef: Ref<'_, Node<T>> = self.headNode.borrow(); 
+        // let node: Node<T> = *nodeRef;
+
         // self.headNode.replace(self.insert(currentNode, value));
 
         // incriment size
