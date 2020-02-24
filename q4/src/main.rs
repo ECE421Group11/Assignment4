@@ -10,6 +10,10 @@ pub enum Val<T>{
 
 #[derive(Debug, Clone)]
 pub enum Node<T>{
+    HeadNode{
+        up: Box<RefCell<Node<T>>>,
+        right: Box<RefCell<Node<T>>>,
+    },
     ValueNode{
         val: Val<T>,
         up: Box<RefCell<Node<T>>>,
@@ -32,13 +36,9 @@ impl<T> SkipList<T>{
     pub fn new() -> Self{
         // creates a new skip list.
         //add your code here
-        let headNode:Node<T> = Node::ValueNode{
-            val: Val::Empty, 
+        let headNode:Node<T> = Node::HeadNode{ 
             up: Box::new(RefCell::new(Node::TailNode)), 
             right: Box::new(RefCell::new(Node::TailNode)),
-            left: Box::new(RefCell::new(Node::TailNode)),
-            down: Box::new(RefCell::new(Node::TailNode)),
-
         }; 
 
         return SkipList {
@@ -73,7 +73,7 @@ impl<T> SkipList<T>{
     
         let nodeRef: Ref<'_, Node<T>> = self.headNode.borrow(); 
         let node: Node<T> = *nodeRef;
-    
+        
         // self.headNode.replace(self.insert(currentNode, value));
 
         // incriment size
