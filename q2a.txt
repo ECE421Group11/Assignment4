@@ -1,0 +1,24 @@
+Function Declaration:
+
+pub fn cons<A, RA, RD>(car: RA, cdr: RD) -> List<A> 
+where
+    Arc<A>: From<RA>,
+    RD: Borrow<List<A>>
+
+Description:
+This function takes in the list cdr and adds the prepends it
+with the element car.
+
+
+Paramaters:
+car: the value to be prepended to the list
+cdr: the list
+
+Types:
+A: The data type of the list (e.g. integer, string, etc).
+Note: Since Arc<A> is used instead of A that means that there
+is shared ownership of A on the heap.
+
+RA: A type which can be converted into type A
+
+RD: A borrowed instance of a List with type A
