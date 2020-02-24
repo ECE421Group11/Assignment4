@@ -1,46 +1,11 @@
+// Disclaimer: Our ECE 421 group worked on this together
+// Our code base is adapted from: https://play.rust-lang.org/?gist=d65d605a48d38648737ad2ae38f46434&version=stable
+
 extern crate slab;
 
 use slab::Slab;
 use std::fmt;
 use std::ops::{Index, IndexMut};
-
-fn main() {
-    println!("create an empty doubly-linked list");
-    let mut list = List::new();
-    println!("{:?}\n", list);
-    
-    println!("push 9 to the back");
-    let a = list.push_back(9);
-    println!("{:?}\n", list);
-    
-    println!("push 0 to the front");
-    let b = list.push_front(0);
-    println!("{:?}\n", list);
-    
-    println!("insert 3 after {}", list[a].value);
-    let c = list.insert_after(a, 3);
-    println!("{:?}\n", list);
-    
-    println!("change {} to 1", list[a].value);
-    list[a].value = 1;
-    println!("{:?}\n", list);
-    
-    println!("insert 2 before {}", list[c].value);
-    let d = list.insert_before(c, 2);
-    println!("{:?}\n", list);
-    
-    println!("remove {}", list.remove(a));
-    println!("{:?}\n", list);
-    
-    println!("remove {}", list.remove(d));
-    println!("{:?}\n", list);
-    
-    println!("remove {}", list.remove(b));
-    println!("{:?}\n", list);
-    
-    println!("remove {}", list.remove(c));
-    println!("{:?}\n", list);
-}
 
 // A doubly linked list.
 struct List<T> {
@@ -211,4 +176,42 @@ impl<T: fmt::Debug> fmt::Debug for List<T> {
         
         Ok(())
     }
+}
+
+fn main() {
+    println!("create an empty doubly-linked list");
+    let mut list = List::new();
+    println!("{:?}\n", list);
+    
+    println!("push 9 to the back");
+    let a = list.push_back(9);
+    println!("{:?}\n", list);
+    
+    println!("push 0 to the front");
+    let b = list.push_front(0);
+    println!("{:?}\n", list);
+    
+    println!("insert 3 after {}", list[a].value);
+    let c = list.insert_after(a, 3);
+    println!("{:?}\n", list);
+    
+    println!("change {} to 1", list[a].value);
+    list[a].value = 1;
+    println!("{:?}\n", list);
+    
+    println!("insert 2 before {}", list[c].value);
+    let d = list.insert_before(c, 2);
+    println!("{:?}\n", list);
+    
+    println!("remove {}", list.remove(a));
+    println!("{:?}\n", list);
+    
+    println!("remove {}", list.remove(d));
+    println!("{:?}\n", list);
+    
+    println!("remove {}", list.remove(b));
+    println!("{:?}\n", list);
+    
+    println!("remove {}", list.remove(c));
+    println!("{:?}\n", list);
 }
