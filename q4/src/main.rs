@@ -70,46 +70,83 @@ struct Node<T> {
 struct SkipList<T> {
     slab: Slab<Node<T>>,
     head: Pointer,
-    tail: Pointer,
 }
 
-impl<T> SkipList<T> {
+impl<T: PartialOrd> SkipList<T> {
     // Returns a new doubly linked list.
-    fn new() -> SkipList<T> {
+    pub fn new() -> Self {
         SkipList {
             slab: Slab::new(),
             head: Pointer::null(),
-            tail: Pointer::null(),
         }
     }
-    
-    // Inserts a new element at the back of the list.
-    fn push_back(&mut self, t: T) -> Pointer {
-        let tail = self.tail;
-        if tail.is_null() {
-            let n = Pointer(self.slab.insert(Node {
+
+    pub fn len(&self) -> usize{
+        return self.slab.len();
+    }
+
+    pub fn is_empty(&self) -> bool{
+        return self.len() == 0;
+    }
+
+    // Inserts a new element at the front of the list.
+    pub fn push(&mut self, t: T){
+        let head = self.head;
+        if head.is_null() {
+            let new_node = Pointer(self.slab.insert(Node {
                 value: t,
                 right: Pointer::null(),
                 left: Pointer::null(),
                 up: Pointer::null(),
                 down: Pointer::null(),
-
             }));
-            self.head = n;
-            self.tail = n;
-            n
+            self.head = new_node;
         } else {
-            self.insert_after(tail, t)
+            self.insert(head, t);
         }
     }
-    
-    // Inserts a new element at the front of the list.
-    fn push_front(&mut self, t: T) -> Pointer {
-        let head = self.head;
-        if head.is_null() {
-            self.push_back(t)
-        } else {
-            self.insert_before(head, t)
+
+    fn insert(&mut self, node: Pointer, value:T){
+        let right = self[node].right;
+        let down = self[node].down;
+        let left = self[node].left;
+
+        // on bottom layer
+        if down.is_null(){
+            if right.is_null(){
+                if self[node].value > value{
+                    self.insert_before(node, value);
+                }
+                else{
+                    self.insert_after(node, value);
+                }
+            }
+            else if self[right].value > value{
+                self.insert_after(node, value);
+            }
+            else if self[right].value == value{
+                panic!("Duplicate Value added")
+            }
+            else{
+                if left.is_null(){
+                    self.head = self.insert_before(node, value); 
+                }
+                else{
+                    self.insert(right, value);
+                }
+            }
+        }
+        else if right.is_null(){
+            self.insert(down, value);
+        }
+        else if self[right].value > value{
+            self.insert(down, value);
+        }
+        else if self[right].value == value{
+            panic!("Duplicate Value added")
+        }
+        else{
+            self.insert(right, value);
         }
     }
     
@@ -124,15 +161,13 @@ impl<T> SkipList<T> {
             down: Pointer::null(),
         }));
         
-        if next.is_null() {
-            self.tail = n;
-        } else {
+        if !next.is_null() {
             self[next].left = n;
         }
         self[node].right = n;
         n
     }
-    
+
     // Inserts a new element before `node`.
     fn insert_before(&mut self, node: Pointer, t: T) -> Pointer {
         let prev = self[node].left;
@@ -152,26 +187,11 @@ impl<T> SkipList<T> {
         self[node].left = n;
         n
     }
-    
-    // Removes `node` from the list and returns its value.
-    fn remove(&mut self, node: Pointer) -> T {
-        let prev = self[node].left;
-        let next = self[node].right;
-        
-        if prev.is_null() {
-            self.head = next;
-        } else {
-            self[prev].right = next;
-        }
-        
-        if next.is_null() {
-            self.tail = prev;
-        } else {
-            self[next].left = prev;
-        }
-        
-        self.slab.remove(node.0).value
+
+    // Inserts a new element at the back of the list.
+    pub fn push_back(&mut self, t: T){
     }
+
 }
 
 
@@ -181,35 +201,33 @@ fn main() {
     let mut list = SkipList::new();
     println!("{:?}\n", list);
     
-    println!("push 9 to the back");
-    let a = list.push_back(9);
+    println!("push 9");
+    let a = list.push(9);
     println!("{:?}\n", list);
     
-    println!("push 0 to the front");
-    let b = list.push_front(0);
+    println!("push 1");
+    let b = list.push(1);
     println!("{:?}\n", list);
-    
-    println!("insert 3 after {}", list[a].value);
-    let c = list.insert_after(a, 3);
+
+    println!("push 2");
+    let b = list.push(2);
     println!("{:?}\n", list);
-    
-    println!("change {} to 1", list[a].value);
-    list[a].value = 1;
+
+    println!("push 4");
+    let b = list.push(4);
     println!("{:?}\n", list);
-    
-    println!("insert 2 before {}", list[c].value);
-    let d = list.insert_before(c, 2);
-    println!("{:?}\n", list);
-    
-    println!("remove {}", list.remove(a));
-    println!("{:?}\n", list);
-    
-    println!("remove {}", list.remove(d));
-    println!("{:?}\n", list);
-    
-    println!("remove {}", list.remove(b));
-    println!("{:?}\n", list);
-    
-    println!("remove {}", list.remove(c));
+
+    // println!("push 12");
+    // let b = list.push(12);
+    // println!("{:?}\n", list);
+
+    // println!("push 11");
+    // let b = list.push(11);
+    // println!("{:?}\n", list);
+
+    // println!("push 0");
+    // let b = list.push(0);
+    // println!("{:?}\n", list);
+
     println!("{:?}\n", list);
 }
