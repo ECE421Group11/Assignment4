@@ -7,40 +7,36 @@ use slab::Slab;
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
-// A doubly linked list.
-struct List<T> {
-    // All nodes get stored into this slab. A slab is basically just a
-    // `Vec<Option<T>>` in disguse. We use it as a simple node allocator.
-    slab: Slab<Node<T>>,
-    // The head of the doubly linked list.
-    head: Pointer,
-    // The tail of the doubly linked list.
-    tail: Pointer,
+impl<T: fmt::Debug> fmt::Debug for SkipList<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut first = true;
+        let mut n = self.head;
+        
+        write!(f, "List(")?;
+        while !n.is_null() {
+            if !first {
+                write!(f, ", ")?;
+            }
+            first = false;
+            
+            write!(f, "{:?}", self[n].value)?;
+            n = self[n].right;
+        }
+        write!(f, ")")?;
+        
+        Ok(())
+    }
 }
 
-// A node in a doubly-linked list.
-struct Node<T> {
-    // The value stored in this node.
-    value: T,
-    // The next node in the list.
-    next: Pointer,
-    // The previous node in the list.
-    prev: Pointer,
-}
-
-// A `Pointer` is just an index that refers to a node in the slab.
 #[derive(Eq, PartialEq, Copy, Clone)]
 struct Pointer(usize);
 
 impl Pointer {
-    // The null pointer is `!0`, which is the largest possible value of type
-    // `usize`. There's no way we'll ever have a legitimate index that large.
     #[inline]
     fn null() -> Pointer {
         Pointer(!0)
     }
     
-    // Returns `true` if this pointer is null.
     #[inline]
     fn is_null(&self) -> bool {
         *self == Pointer::null()
@@ -48,7 +44,7 @@ impl Pointer {
 }
 
 // Just for convenience, so that we can type `self[i]` instead of `self.slab[i]`.
-impl<T> Index<Pointer> for List<T> {
+impl<T> Index<Pointer> for SkipList<T> {
     type Output = Node<T>;
     
     fn index(&self, index: Pointer) -> &Node<T> {
@@ -57,16 +53,30 @@ impl<T> Index<Pointer> for List<T> {
 }
 
 // Just for convenience, so that we can type `self[i]` instead of `self.slab[i]`.
-impl<T> IndexMut<Pointer> for List<T> {
+impl<T> IndexMut<Pointer> for SkipList<T> {
     fn index_mut(&mut self, index: Pointer) -> &mut Node<T> {
         &mut self.slab[index.0]
     }
 }
 
-impl<T> List<T> {
+struct Node<T> {
+    value: T,
+    right: Pointer,
+    left: Pointer,
+    up: Pointer,
+    down: Pointer
+}
+
+struct SkipList<T> {
+    slab: Slab<Node<T>>,
+    head: Pointer,
+    tail: Pointer,
+}
+
+impl<T> SkipList<T> {
     // Returns a new doubly linked list.
-    fn new() -> List<T> {
-        List {
+    fn new() -> SkipList<T> {
+        SkipList {
             slab: Slab::new(),
             head: Pointer::null(),
             tail: Pointer::null(),
@@ -79,8 +89,11 @@ impl<T> List<T> {
         if tail.is_null() {
             let n = Pointer(self.slab.insert(Node {
                 value: t,
-                prev: Pointer::null(),
-                next: Pointer::null(),
+                right: Pointer::null(),
+                left: Pointer::null(),
+                up: Pointer::null(),
+                down: Pointer::null(),
+
             }));
             self.head = n;
             self.tail = n;
@@ -102,85 +115,70 @@ impl<T> List<T> {
     
     // Inserts a new element after `node`.
     fn insert_after(&mut self, node: Pointer, t: T) -> Pointer {
-        let next = self[node].next;
+        let next = self[node].right;
         let n = Pointer(self.slab.insert(Node {
             value: t,
-            prev: node,
-            next: next,
+            left: node,
+            right: next,
+            up: Pointer::null(),
+            down: Pointer::null(),
         }));
         
         if next.is_null() {
             self.tail = n;
         } else {
-            self[next].prev = n;
+            self[next].left = n;
         }
-        self[node].next = n;
+        self[node].right = n;
         n
     }
     
     // Inserts a new element before `node`.
     fn insert_before(&mut self, node: Pointer, t: T) -> Pointer {
-        let prev = self[node].prev;
+        let prev = self[node].left;
         let n = Pointer(self.slab.insert(Node {
             value: t,
-            prev: prev,
-            next: node,
+            left: prev,
+            right: node,
+            up: Pointer::null(),
+            down: Pointer::null(),
         }));
         
         if prev.is_null() {
             self.head = n;
         } else {
-            self[prev].next = n;
+            self[prev].right = n;
         }
-        self[node].prev = n;
+        self[node].left = n;
         n
     }
     
     // Removes `node` from the list and returns its value.
     fn remove(&mut self, node: Pointer) -> T {
-        let prev = self[node].prev;
-        let next = self[node].next;
+        let prev = self[node].left;
+        let next = self[node].right;
         
         if prev.is_null() {
             self.head = next;
         } else {
-            self[prev].next = next;
+            self[prev].right = next;
         }
         
         if next.is_null() {
             self.tail = prev;
         } else {
-            self[next].prev = prev;
+            self[next].left = prev;
         }
         
         self.slab.remove(node.0).value
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for List<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut first = true;
-        let mut n = self.head;
-        
-        write!(f, "List(")?;
-        while !n.is_null() {
-            if !first {
-                write!(f, ", ")?;
-            }
-            first = false;
-            
-            write!(f, "{:?}", self[n].value)?;
-            n = self[n].next;
-        }
-        write!(f, ")")?;
-        
-        Ok(())
-    }
-}
+
 
 fn main() {
     println!("create an empty doubly-linked list");
-    let mut list = List::new();
+    let mut list = SkipList::new();
     println!("{:?}\n", list);
     
     println!("push 9 to the back");
