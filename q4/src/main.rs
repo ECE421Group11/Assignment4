@@ -6,6 +6,7 @@ extern crate slab;
 use slab::Slab;
 use std::fmt;
 use std::ops::{Index, IndexMut};
+use num::iter::range;
 use rand::StdRng;
 use statrs::distribution::{Geometric, Distribution};
 
@@ -18,12 +19,17 @@ struct SkipList<T> {
     head: Pointer,
     // first node when pushing from the back
     tail: Pointer,
+    // the highest level of the list, 0 is the bottom linked list
+    maxlevel: usize,
+    // the number of items in level 0
+    length: usize,
 }
 
 // A node in a doubly-linked list.
 struct Node<T> {
     // The value stored in this node.
-    value: T,
+    // none valued nodes are either head or tail nodes
+    value: Option<T>,
     // The next node in the list.
     next: Pointer,
     // The previous node in the list.
@@ -33,6 +39,13 @@ struct Node<T> {
     // The pointer below this node
     below: Pointer,
 }
+
+// impl<T> Node<T> {
+// 	// a "null" node is used to represent a head or tail node with no value
+// 	fn null() -> Self {
+		
+// 	}
+// }
 
 // A `Pointer` is just an index that refers to a node in the slab.
 #[derive(Eq, PartialEq, Copy, Clone)]
@@ -69,33 +82,21 @@ impl<T> IndexMut<Pointer> for SkipList<T> {
     }
 }
 
-impl<T> SkipList<T> {
+impl<T: std::cmp::PartialOrd> SkipList<T> {
     // Returns a new doubly linked SkipList.
     fn new() -> SkipList<T> {
         SkipList {
             slab: Slab::new(),
             head: Pointer::null(), 
             tail: Pointer::null(),
+            maxlevel: 0, // no items
+            length: 0,   // no items
         }
     }
 
     // returns the number of elements at level 0 of the skip list.
     fn len(&self) -> usize {
-    	// the next element in list (starts at first element)
-    	let mut next = self[self.head].next;
-    	// start at lenght 0
-    	let mut length = 0;
-    	// increment length for each node in list
-    	while (!next.is_null()) {
-    		// have not reached the end of the list yet - move down list and incr length
-    		next = self[next].next;
-    		length = &length + 1;
-    	}
-    	return length;
-	}
-
-	fn height(&self) -> uszie {
-
+    	self.length
 	}
 
 	// checks if the skip list is empty.
@@ -108,31 +109,89 @@ impl<T> SkipList<T> {
     fn push_front(&mut self, t: T) {
 
     	// the first element in the list
-    	let mut curr_node = self[self.head].next;
+    	let mut current = self.head;
 
         // null first node means list is empty
-        if (curr_node.is_null()) {
+        if current.is_null() {
 
-        	// this part may be unnecessary
-         //    // insert first element, new_node
-         //    let new_node = Pointer(self.slab.insert(Node {
-	        //     value: t,
-	        //     prev: node,
-	        //     next: next,
-	        //     above:
-	        //     below:
-        	// }));
+            // insert first element, new_node
+        	let new = Pointer(self.slab.insert(
+        		Node {
+				    value: Some(t),
+				    next: Pointer::null(),  // no other nodes exist
+				    prev: Pointer::null(),  // no other nodes exist
+				    above: Pointer::null(), // no other nodes exist
+				    below: Pointer::null(), // no other nodes exist
+	        	}
+	        ));
 
+	        // first node
+	        self.length = 1;
+
+	        // generate random height for new node
+	        self.maxlevel = self.rand_level();
+
+	        current = new;
+	        for level in range(0, self.maxlevel) {
+
+	        	// add another node above current, and shift current node up 
+	        	let new = Pointer(self.slab.insert(
+	        		Node {
+					    value: Some(t),
+					    next: Pointer::null(),  // no other values exist
+					    prev: Pointer::null(),  // no other values exist
+					    above: Pointer::null(), // so far none are above
+					    below: current, // the previous node
+		        	}
+		        ));
+
+	        	// point up to new node
+	        	self[current].above = new;
+
+	        	// re-adjust current pointer
+		        current = new;
+
+	        }
+
+	        // once at max height, assign head and tail pointers to current node
+	       	self.head = current;
+	        self.tail = current;
 
         } else {
-        	// search for location to insert t
+        	// search for location to insert t:
+        	// for each level, starting at the top
+        	for level in range(0, self.maxlevel + 1).rev() {
 
-        	for level in 0..(self.len()) {
-        		// for each level, starting at the top, 
+        		// while the next node is not null and its less than the to-be-inserted value
+        		while !self[current].next.is_null() && self[self[current].next].value < t {
+        			// move right
+        			current = self[current].next;
+        		}
 
+        		// if there is lower to go, go lower (redundancy by using &&)
+        		if level > 0 && !self[current].below.is_null() {
+        			// move lower
+        			current = self[current].below;
+        		}
         	}
 
-        	// curr_node.right is where new node goes
+        	// "current" is at level 0, and current.next is where new node goes:
+        	// create new node
+        	let new = Pointer(self.slab.insert(
+        		Node {
+				    value: Some(t),
+				    next: self[current].next,
+				    prev: current,
+				    above: Pointer::null(), // this will be changed below when we add height!
+				    below: Pointer::null(), // level 0, down is null
+	        	}
+	        ));
+
+	        // pointers to new node
+
+
+	        // generate nodes above new node
+
         }
     }
     
@@ -156,11 +215,11 @@ impl<T> SkipList<T> {
  //    }
 
  	// sample a level from a geometric distribution of p = 0.5
-    fn rand_level(&self) -> f64 {
+    fn rand_level(&self) -> usize {
 
     	let mut r = rand::StdRng::new().unwrap();
 		let n = Geometric::new(0.5).unwrap(); 
-		return n.sample::<StdRng>(&mut r);
+		return n.sample::<StdRng>(&mut r) as usize;
 	}
    
 }
